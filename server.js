@@ -26,14 +26,6 @@ let groupOrders = [
     tanggalBuka: '2024-01-10',
     tanggalTutup: '2024-01-20',
     merchandise: [1, 2, 3]
-  },
-  {
-    id: 2,
-    nama: 'Group Order BLACKPINK Limited',
-    status: 'open',
-    tanggalBuka: '2024-01-15',
-    tanggalTutup: '2024-01-25',
-    merchandise: [2, 4]
   }
 ];
 
