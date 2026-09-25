@@ -4,7 +4,7 @@ const app = express();
 
 // ===== CORS MIDDLEWARE =====
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'https://frontend-kwu-team.vercel.app'],
   credentials: true
 }));
 
@@ -175,5 +175,5 @@ app.get('/api/orders/:id', (req, res) => {
 // ===== START SERVER =====
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server jalan di http://localhost:5000`);
+  console.log(`✅ Server jalan di http://localhost:${PORT}`);
 });
