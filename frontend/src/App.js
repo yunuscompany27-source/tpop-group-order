@@ -74,6 +74,11 @@ function App() {
             <div className="cards">
               {merchandise.map(item => (
                 <div key={item.id} className="card">
+                  <img 
+                    src={item.image} 
+                    alt={item.nama} 
+                    style={{width: '100%', height: '150px', objectFit: 'cover', borderRadius: '5px', marginBottom: '10px'}} 
+                  />
                   <h3>{item.nama}</h3>
                   <p className="harga">Rp {item.harga.toLocaleString()}</p>
                   <p><strong>Stok:</strong> {item.stok}</p>

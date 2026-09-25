@@ -12,10 +12,10 @@ app.use(express.json());
 
 // ===== DATA DUMMY =====
 const merch = [
-  { id: 1, nama: 'Photocard BTS', harga: 25000, stok: 10 },
-  { id: 2, nama: 'T-Shirt SEVENTEEN', harga: 150000, stok: 5 },
-  { id: 3, nama: 'Lightstick Stray Kids', harga: 200000, stok: 8 },
-  { id: 4, nama: 'Album NewJeans', harga: 120000, stok: 15 },
+  { id: 1, nama: 'Photocard BTS', harga: 25000, stok: 10, image: 'https://via.placeholder.com/200?text=BTS+Photocard' },
+  { id: 2, nama: 'T-Shirt SEVENTEEN', harga: 150000, stok: 5, image: 'https://via.placeholder.com/200?text=SEVENTEEN+Tshirt' },
+  { id: 3, nama: 'Lightstick Stray Kids', harga: 200000, stok: 8, image: 'https://via.placeholder.com/200?text=Stray+Kids+Lightstick' },
+  { id: 4, nama: 'Album NewJeans', harga: 120000, stok: 15, image: 'https://via.placeholder.com/200?text=NewJeans+Album' },
 ];
 
 let groupOrders = [
