@@ -10,162 +10,219 @@ app.use(cors({
 
 app.use(express.json());
 
-// ===== DATA DUMMY =====
-const merch = [
-  { id: 1, nama: 'Photocard BTS', harga: 25000, stok: 10, image: 'https://i.ibb.co.com/mrks424v/19af03f5a9ac59af781abaddd34b06ac.jpg' },
-  { id: 2, nama: 'T-Shirt SEVENTEEN', harga: 150000, stok: 5, image: 'https://i.ibb.co.com/jkHyYt8C/ae5082ddeea71bdc4ce1c930bb36fcb8-jpg-720x720q80.jpg' },
-  { id: 3, nama: 'Lightstick Stray Kids', harga: 200000, stok: 8, image: 'https://i.ibb.co.com/27WxctkM/s-l1200.png' },
-  { id: 4, nama: 'Album NewJeans', harga: 120000, stok: 15, image: 'https://i.ibb.co.com/LXRhyK1L/41-TPXBV2-SQL-SS400.jpg' },
+// ===== DATA STRUKTUR =====
+let users = [
+  { id: 1, name: 'User1', email: 'user1@gmail.com', password: '123456', role: 'user', phone: '081234567890' }
 ];
 
-let groupOrders = [
-  { 
-    id: 1, 
-    nama: 'Group Order BTS Merch', 
-    status: 'open',
-    tanggalBuka: '2024-01-10',
-    tanggalTutup: '2024-01-20',
-    merchandise: [1, 2, 3]
-  }
+let providers = [
+  { id: 1, name: 'Budi (Driver)', email: 'budi@gmail.com', password: '123456', role: 'provider', category: 'Transportasi', phone: '081234567891', price: 50000, rating: 4.5, reviews: 12, photo: 'https://via.placeholder.com/200?text=Driver+Budi' },
+  { id: 2, name: 'Siti (Makanan)', email: 'siti@gmail.com', password: '123456', role: 'provider', category: 'Makanan', phone: '081234567892', price: 35000, rating: 4.8, reviews: 25, photo: 'https://via.placeholder.com/200?text=Chef+Siti' }
+];
+
+let categories = [
+  { id: 1, nama: 'Transportasi', emoji: '🚗', desc: 'Pesan driver' },
+  { id: 2, nama: 'Makanan', emoji: '🍜', desc: 'Pesan makanan' },
+  { id: 3, nama: 'Kurir', emoji: '📦', desc: 'Pengiriman' },
+  { id: 4, nama: 'Belanja', emoji: '🛍️', desc: 'Belanja kebutuhan' },
+  { id: 5, nama: 'Bantuan', emoji: '🔧', desc: 'Jasa & bantuan' }
 ];
 
 let orders = [];
 let orderIdCounter = 1;
 
+let ratings = [];
+
 // ===== API ROUTES =====
 
-// 1. Halaman utama
+// 1. Home
 app.get('/', (req, res) => {
-  res.json({ pesan: 'Selamat datang di T-pop Group Order!' });
+  res.json({ pesan: 'Selamat datang di SahabatGo!' });
 });
 
-// ===== MERCHANDISE ROUTES =====
-app.get('/api/merchandise', (req, res) => {
-  res.json({ success: true, data: merch });
-});
+// ===== AUTHENTICATION =====
 
-app.get('/api/merchandise/:id', (req, res) => {
-  const item = merch.find(m => m.id == req.params.id);
-  if (!item) {
-    return res.status(404).json({ success: false, pesan: 'Merchandise tidak ditemukan' });
-  }
-  res.json({ success: true, data: item });
-});
-
-// ===== GROUP ORDER ROUTES =====
-
-// 2. Lihat semua group order
-app.get('/api/group-order', (req, res) => {
-  res.json({ success: true, data: groupOrders });
-});
-
-// 3. Lihat 1 group order by ID
-app.get('/api/group-order/:id', (req, res) => {
-  const go = groupOrders.find(g => g.id == req.params.id);
-  if (!go) {
-    return res.status(404).json({ success: false, pesan: 'Group order tidak ditemukan' });
+// User Login
+app.post('/api/auth/user-login', (req, res) => {
+  const { email, password } = req.body;
+  const user = users.find(u => u.email === email && u.password === password);
+  
+  if (!user) {
+    return res.status(401).json({ success: false, pesan: 'Email atau password salah' });
   }
   
-  // Ambil detail merchandise di group order ini
-  const merchDetail = go.merchandise.map(merchId => 
-    merch.find(m => m.id === merchId)
-  );
-  
-  res.json({ 
-    success: true, 
-    data: {
-      ...go,
-      merchandise: merchDetail
-    }
-  });
+  res.json({ success: true, data: user });
 });
 
-// 4. BUAT group order baru (POST)
-app.post('/api/group-order', (req, res) => {
-  const { nama, tanggalTutup, merchandise } = req.body;
+// User Register
+app.post('/api/auth/user-register', (req, res) => {
+  const { name, email, password, phone } = req.body;
   
-  if (!nama || !tanggalTutup) {
-    return res.status(400).json({ 
-      success: false, 
-      pesan: 'Nama dan tanggal tutup harus diisi!' 
-    });
+  if (users.find(u => u.email === email)) {
+    return res.status(400).json({ success: false, pesan: 'Email sudah terdaftar' });
   }
   
-  const newGroupOrder = {
-    id: groupOrders.length + 1,
-    nama,
-    status: 'open',
-    tanggalBuka: new Date().toISOString().split('T')[0],
-    tanggalTutup,
-    merchandise: merchandise || []
+  const newUser = {
+    id: users.length + 1,
+    name,
+    email,
+    password,
+    phone,
+    role: 'user'
   };
   
-  groupOrders.push(newGroupOrder);
+  users.push(newUser);
+  res.status(201).json({ success: true, data: newUser });
+});
+
+// Provider Login
+app.post('/api/auth/provider-login', (req, res) => {
+  const { email, password } = req.body;
+  const provider = providers.find(p => p.email === email && p.password === password);
   
-  res.status(201).json({ 
-    success: true, 
-    pesan: 'Group order berhasil dibuat!',
-    data: newGroupOrder 
-  });
+  if (!provider) {
+    return res.status(401).json({ success: false, pesan: 'Email atau password salah' });
+  }
+  
+  res.json({ success: true, data: provider });
+});
+
+// Provider Register
+app.post('/api/auth/provider-register', (req, res) => {
+  const { name, email, password, phone, category, price } = req.body;
+  
+  if (providers.find(p => p.email === email)) {
+    return res.status(400).json({ success: false, pesan: 'Email sudah terdaftar' });
+  }
+  
+  const newProvider = {
+    id: providers.length + 1,
+    name,
+    email,
+    password,
+    phone,
+    category,
+    price,
+    rating: 5.0,
+    reviews: 0,
+    role: 'provider',
+    photo: 'https://via.placeholder.com/200?text=' + name
+  };
+  
+  providers.push(newProvider);
+  res.status(201).json({ success: true, data: newProvider });
+});
+
+// ===== CATEGORY ROUTES =====
+
+app.get('/api/categories', (req, res) => {
+  res.json({ success: true, data: categories });
+});
+
+// ===== PROVIDER ROUTES =====
+
+// Get providers by category
+app.get('/api/providers/:category', (req, res) => {
+  const providersByCategory = providers.filter(p => p.category === req.params.category);
+  res.json({ success: true, data: providersByCategory });
+});
+
+// Get single provider
+app.get('/api/provider/:id', (req, res) => {
+  const provider = providers.find(p => p.id == req.params.id);
+  if (!provider) {
+    return res.status(404).json({ success: false, pesan: 'Provider tidak ditemukan' });
+  }
+  res.json({ success: true, data: provider });
 });
 
 // ===== ORDER ROUTES =====
 
-// 5. Lihat semua order
-app.get('/api/orders', (req, res) => {
-  res.json({ success: true, data: orders });
-});
-
-// 6. BUAT order baru (user order merchandise)
+// Create order
 app.post('/api/orders', (req, res) => {
-  const { userId, groupOrderId, merchandise } = req.body;
+  const { userId, providerId, categoryName, totalPrice, description } = req.body;
   
-  if (!userId || !groupOrderId || !merchandise) {
-    return res.status(400).json({ 
-      success: false, 
-      pesan: 'userId, groupOrderId, dan merchandise harus diisi!' 
-    });
+  if (!userId || !providerId) {
+    return res.status(400).json({ success: false, pesan: 'User ID dan Provider ID harus diisi!' });
   }
-  
-  // Hitung total harga
-  let totalHarga = 0;
-  merchandise.forEach(item => {
-    const merch_item = merch.find(m => m.id === item.merchId);
-    if (merch_item) {
-      totalHarga += merch_item.harga * item.jumlah;
-    }
-  });
   
   const newOrder = {
     id: orderIdCounter++,
     userId,
-    groupOrderId,
-    merchandise,
-    totalHarga,
-    status: 'pending',
-    tanggalOrder: new Date().toISOString().split('T')[0]
+    providerId,
+    categoryName,
+    totalPrice,
+    description,
+    status: 'pending', // pending, accepted, in_progress, completed
+    createdAt: new Date().toISOString().split('T')[0]
   };
   
   orders.push(newOrder);
-  
-  res.status(201).json({ 
-    success: true, 
-    pesan: 'Order berhasil dibuat!',
-    data: newOrder 
-  });
+  res.status(201).json({ success: true, data: newOrder });
 });
 
-// 7. Lihat order by ID
-app.get('/api/orders/:id', (req, res) => {
-  const order = orders.find(o => o.id == req.params.id);
+// Get user orders
+app.get('/api/orders/user/:userId', (req, res) => {
+  const userOrders = orders.filter(o => o.userId == req.params.userId);
+  res.json({ success: true, data: userOrders });
+});
+
+// Get provider orders
+app.get('/api/orders/provider/:providerId', (req, res) => {
+  const providerOrders = orders.filter(o => o.providerId == req.params.providerId);
+  res.json({ success: true, data: providerOrders });
+});
+
+// Update order status
+app.put('/api/orders/:orderId', (req, res) => {
+  const { status } = req.body;
+  const order = orders.find(o => o.id == req.params.orderId);
+  
   if (!order) {
     return res.status(404).json({ success: false, pesan: 'Order tidak ditemukan' });
   }
+  
+  order.status = status;
   res.json({ success: true, data: order });
+});
+
+// ===== RATING ROUTES =====
+
+// Create rating
+app.post('/api/ratings', (req, res) => {
+  const { userId, providerId, rating, review } = req.body;
+  
+  const newRating = {
+    id: ratings.length + 1,
+    userId,
+    providerId,
+    rating,
+    review,
+    createdAt: new Date().toISOString().split('T')[0]
+  };
+  
+  ratings.push(newRating);
+  
+  // Update provider rating
+  const provider = providers.find(p => p.id === providerId);
+  if (provider) {
+    const providerRatings = ratings.filter(r => r.providerId === providerId);
+    const avgRating = (providerRatings.reduce((sum, r) => sum + r.rating, 0) / providerRatings.length).toFixed(1);
+    provider.rating = parseFloat(avgRating);
+    provider.reviews = providerRatings.length;
+  }
+  
+  res.status(201).json({ success: true, data: newRating });
+});
+
+// Get ratings for provider
+app.get('/api/ratings/:providerId', (req, res) => {
+  const providerRatings = ratings.filter(r => r.providerId == req.params.providerId);
+  res.json({ success: true, data: providerRatings });
 });
 
 // ===== START SERVER =====
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server jalan di http://localhost:${PORT}`);
+  console.log(`✅ Server SahabatGo jalan di http://localhost:${PORT}`);
 });
