@@ -3,12 +3,14 @@ import './App.css';
 
 function App() {
   const [page, setPage] = useState('login');
-  const [role, setRole] = useState('user'); // user, driver, merchant, admin
+  const [role, setRole] = useState('user');
   const [currentUser, setCurrentUser] = useState(null);
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [providers, setProviders] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [driverOrders, setDriverOrders] = useState([]);
   const [promos, setPromos] = useState([]);
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', type: '' });
 
@@ -59,6 +61,26 @@ function App() {
     }
   };
 
+  const fetchAvailableOrders = async (serviceName) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/orders/available/${serviceName}`);
+      const data = await response.json();
+      setAvailableOrders(data.data);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const fetchDriverOrders = async (driverId) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/orders/driver/${driverId}`);
+      const data = await response.json();
+      setDriverOrders(data.data);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -79,6 +101,8 @@ function App() {
         } else if (role === 'admin') {
           setPage('admin-dashboard');
         } else if (role === 'driver') {
+          fetchAvailableOrders(data.data.type);
+          fetchDriverOrders(data.data.id);
           setPage('driver-dashboard');
         } else {
           setPage('merchant-dashboard');
@@ -89,6 +113,46 @@ function App() {
     } catch (error) {
       console.error('Error:', error);
       alert('Login gagal');
+    }
+  };
+
+  const handleAcceptOrder = async (orderId) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/order/${orderId}/accept`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId: currentUser.id })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        alert('Order diterima!');
+        fetchAvailableOrders(currentUser.type);
+        fetchDriverOrders(currentUser.id);
+        setPage('driver-active-orders');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Gagal menerima order');
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, status) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/order/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        alert(`Status diubah menjadi ${status}!`);
+        fetchDriverOrders(currentUser.id);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Gagal update status');
     }
   };
 
@@ -207,7 +271,6 @@ function App() {
             <p>Pilih layanan yang Anda butuhkan</p>
           </section>
 
-          {/* SERVICES GRID */}
           <section className="services-grid">
             {services.map(service => (
               <div key={service.id} className="service-card" onClick={() => {
@@ -222,7 +285,6 @@ function App() {
             ))}
           </section>
 
-          {/* PROMOS */}
           <section className="promos-section">
             <h3>🎁 Promo Spesial</h3>
             <div className="promos-list">
@@ -236,7 +298,6 @@ function App() {
             </div>
           </section>
 
-          {/* RECENT ORDERS */}
           <section className="orders-section">
             <h3>📦 Pesanan Terakhir</h3>
             {orders.length === 0 ? (
@@ -274,7 +335,7 @@ function App() {
                 <img src={provider.photo} alt={provider.name} />
                 <h3>{provider.name}</h3>
                 <p>⭐ {provider.rating} ({provider.reviews} review)</p>
-                <p className="price">Rp {provider.rating * 10000}</p>
+                <p className="price">Rp {Math.round(provider.rating * 10000).toLocaleString()}</p>
                 <button onClick={async () => {
                   const response = await fetch(`${BACKEND_URL}/api/orders`, {
                     method: 'POST',
@@ -289,7 +350,7 @@ function App() {
                   });
                   const data = await response.json();
                   if (data.success) {
-                    alert('Order berhasil!');
+                    alert('Order berhasil! Menunggu driver...');
                     fetchUserOrders(currentUser.id);
                     setPage('home');
                   }
@@ -361,9 +422,9 @@ function App() {
                   <p><strong>Harga:</strong> Rp {order.totalPrice.toLocaleString()}</p>
                   <p><strong>Status:</strong> <span className={`status-${order.status}`}>{order.status}</span></p>
                   <div className="tracking-status">
-                    <div className={`step ${['pending', 'accepted', 'in_progress', 'completed'].includes(order.status) ? 'active' : ''}`}>Menunggu</div>
-                    <div className={`step ${['accepted', 'in_progress', 'completed'].includes(order.status) ? 'active' : ''}`}>Diterima</div>
-                    <div className={`step ${['in_progress', 'completed'].includes(order.status) ? 'active' : ''}`}>Proses</div>
+                    <div className={`step ${['searching', 'accepted', 'on_the_way', 'arrived', 'completed'].includes(order.status) ? 'active' : ''}`}>Mencari</div>
+                    <div className={`step ${['accepted', 'on_the_way', 'arrived', 'completed'].includes(order.status) ? 'active' : ''}`}>Diterima</div>
+                    <div className={`step ${['on_the_way', 'arrived', 'completed'].includes(order.status) ? 'active' : ''}`}>Perjalanan</div>
                     <div className={`step ${order.status === 'completed' ? 'active' : ''}`}>Selesai</div>
                   </div>
                 </div>
@@ -405,17 +466,152 @@ function App() {
     return (
       <div className="app-user">
         <header className="navbar">
-          <h1>🛵 Dashboard Driver</h1>
-          <button onClick={handleLogout} className="logout-btn">Logout</button>
+          <h1>🛵 SahabatGo Driver</h1>
+          <div className="navbar-menu">
+            <button onClick={() => setPage('driver-dashboard')} className="nav-btn active">📋 Pesanan Tersedia</button>
+            <button onClick={() => setPage('driver-active-orders')} className="nav-btn">🚗 Pesanan Aktif</button>
+            <button onClick={() => setPage('driver-profile')} className="nav-btn">👤 Profile</button>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
+          </div>
         </header>
 
         <div className="container">
-          <section className="dashboard-section">
-            <h2>Selamat datang, {currentUser.name}!</h2>
-            <div className="dashboard-card">
+          <section className="driver-section">
+            <h2>📋 Pesanan Tersedia ({availableOrders.length})</h2>
+            
+            {availableOrders.length === 0 ? (
+              <p className="no-orders">Tidak ada pesanan yang tersedia saat ini</p>
+            ) : (
+              <div className="available-orders-list">
+                {availableOrders.map(order => (
+                  <div key={order.id} className="available-order-card">
+                    <div className="order-header">
+                      <h3>Order #{order.id}</h3>
+                      <p className="service-type">{order.serviceName}</p>
+                    </div>
+                    
+                    <div className="order-details">
+                      <p><strong>Deskripsi:</strong> {order.description}</p>
+                      <p><strong>Harga:</strong> <span className="price">Rp {order.totalPrice.toLocaleString()}</span></p>
+                      <p><strong>Tanggal:</strong> {order.createdAt}</p>
+                    </div>
+                    
+                    <button 
+                      onClick={() => handleAcceptOrder(order.id)}
+                      className="accept-btn"
+                    >
+                      ✓ Terima Pesanan
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== DRIVER ACTIVE ORDERS =====
+  if (page === 'driver-active-orders' && currentUser) {
+    return (
+      <div className="app-user">
+        <header className="navbar">
+          <h1>🛵 SahabatGo Driver</h1>
+          <div className="navbar-menu">
+            <button onClick={() => setPage('driver-dashboard')} className="nav-btn">📋 Pesanan Tersedia</button>
+            <button onClick={() => setPage('driver-active-orders')} className="nav-btn active">🚗 Pesanan Aktif</button>
+            <button onClick={() => setPage('driver-profile')} className="nav-btn">👤 Profile</button>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
+          </div>
+        </header>
+
+        <div className="container">
+          <section className="driver-section">
+            <h2>🚗 Pesanan Aktif ({driverOrders.filter(o => o.status !== 'completed').length})</h2>
+            
+            {driverOrders.filter(o => o.status !== 'completed').length === 0 ? (
+              <p className="no-orders">Tidak ada pesanan aktif</p>
+            ) : (
+              <div className="active-orders-list">
+                {driverOrders.filter(o => o.status !== 'completed').map(order => (
+                  <div key={order.id} className="active-order-card">
+                    <div className="order-header">
+                      <h3>Order #{order.id}</h3>
+                      <p className={`status-badge status-${order.status}`}>{order.status.toUpperCase()}</p>
+                    </div>
+                    
+                    <div className="order-details">
+                      <p><strong>Layanan:</strong> {order.serviceName}</p>
+                      <p><strong>Harga:</strong> <span className="price">Rp {order.totalPrice.toLocaleString()}</span></p>
+                      <p><strong>Diterima pada:</strong> {order.acceptedAt}</p>
+                    </div>
+                    
+                    <div className="status-buttons">
+                      {order.status === 'accepted' && (
+                        <button onClick={() => handleUpdateOrderStatus(order.id, 'on_the_way')} className="status-btn status-btn-yellow">
+                          🚗 Sedang Perjalanan
+                        </button>
+                      )}
+                      {order.status === 'on_the_way' && (
+                        <button onClick={() => handleUpdateOrderStatus(order.id, 'arrived')} className="status-btn status-btn-blue">
+                          📍 Tiba di Tujuan
+                        </button>
+                      )}
+                      {order.status === 'arrived' && (
+                        <button onClick={() => handleUpdateOrderStatus(order.id, 'completed')} className="status-btn status-btn-green">
+                          ✓ Selesai
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <section className="driver-section" style={{marginTop: '40px'}}>
+              <h2>✓ Pesanan Selesai ({driverOrders.filter(o => o.status === 'completed').length})</h2>
+              {driverOrders.filter(o => o.status === 'completed').length === 0 ? (
+                <p className="no-orders">Belum ada pesanan yang selesai</p>
+              ) : (
+                <div className="completed-orders-list">
+                  {driverOrders.filter(o => o.status === 'completed').map(order => (
+                    <div key={order.id} className="completed-order-card">
+                      <p><strong>{order.serviceName}</strong> - Rp {order.totalPrice.toLocaleString()}</p>
+                      <p className="completed-date">Selesai: {order.completedAt}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== DRIVER PROFILE =====
+  if (page === 'driver-profile' && currentUser) {
+    return (
+      <div className="app-user">
+        <header className="navbar">
+          <h1>🛵 SahabatGo Driver</h1>
+          <button onClick={() => setPage('driver-dashboard')} className="back-btn">← Kembali</button>
+        </header>
+
+        <div className="container">
+          <section className="driver-profile-section">
+            <h2>👤 Profile Driver</h2>
+            <div className="driver-profile-card">
+              <p><strong>Nama:</strong> {currentUser.name}</p>
+              <p><strong>Email:</strong> {currentUser.email}</p>
+              <p><strong>No. Telepon:</strong> {currentUser.phone}</p>
               <p><strong>Tipe Layanan:</strong> {currentUser.type}</p>
-              <p><strong>Rating:</strong> ⭐ {currentUser.rating}</p>
-              <p><strong>Total Review:</strong> {currentUser.reviews}</p>
+              <p><strong>Rating:</strong> ⭐ {currentUser.rating} ({currentUser.reviews} review)</p>
+              <p><strong>Status:</strong> <span className={`status-badge ${currentUser.status === 'online' ? 'online' : 'offline'}`}>{currentUser.status.toUpperCase()}</span></p>
+              <p className="earnings"><strong>Total Earning:</strong> Rp {currentUser.earnings?.toLocaleString() || 0}</p>
+              <p><strong>Pesanan Aktif:</strong> {driverOrders.filter(o => o.status !== 'completed').length}</p>
+              <p><strong>Pesanan Selesai:</strong> {driverOrders.filter(o => o.status === 'completed').length}</p>
             </div>
           </section>
         </div>
@@ -439,6 +635,7 @@ function App() {
               <p><strong>Toko:</strong> {currentUser.name}</p>
               <p><strong>Rating:</strong> ⭐ {currentUser.rating}</p>
               <p><strong>Total Ulasan:</strong> {currentUser.reviews}</p>
+              <p><strong>Total Earning:</strong> Rp {currentUser.earnings?.toLocaleString() || 0}</p>
             </div>
           </section>
         </div>
@@ -460,16 +657,28 @@ function App() {
             <h2>📊 Statistik</h2>
             <div className="stats-grid">
               <div className="stat-card">
-                <h3>Total User</h3>
-                <p className="stat-number">{orders.length > 0 ? Math.floor(Math.random() * 1000) : 0}</p>
-              </div>
-              <div className="stat-card">
                 <h3>Total Orders</h3>
                 <p className="stat-number">{orders.length}</p>
               </div>
               <div className="stat-card">
-                <h3>Total Providers</h3>
-                <p className="stat-number">{providers.length}</p>
+                <h3>Pesanan Aktif</h3>
+                <p className="stat-number">{orders.filter(o => o.status !== 'completed').length}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Pesanan Selesai</h3>
+                <p className="stat-number">{orders.filter(o => o.status === 'completed').length}</p>
+              </div>
+            </div>
+
+            <div style={{marginTop: '40px'}}>
+              <h3>📋 Semua Pesanan</h3>
+              <div className="admin-orders-list">
+                {orders.map(order => (
+                  <div key={order.id} className="admin-order-item">
+                    <p><strong>#{order.id}</strong> - {order.serviceName} - Rp {order.totalPrice.toLocaleString()}</p>
+                    <p className={`status-${order.status}`}>{order.status}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </section>

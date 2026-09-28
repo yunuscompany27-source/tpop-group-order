@@ -15,8 +15,8 @@ let users = [
 ];
 
 let providers = [
-  { id: 1, name: 'Budi (Driver)', email: 'budi@gmail.com', password: '123456', role: 'driver', type: 'GoRide', phone: '081234567891', rating: 4.5, reviews: 12, photo: 'https://via.placeholder.com/200?text=Driver+Budi' },
-  { id: 2, name: 'Siti (Makanan)', email: 'siti@gmail.com', password: '123456', role: 'merchant', type: 'GoFood', phone: '081234567892', rating: 4.8, reviews: 25, photo: 'https://via.placeholder.com/200?text=Chef+Siti' }
+  { id: 1, name: 'Budi (Driver)', email: 'budi@gmail.com', password: '123456', role: 'driver', type: 'GoRide', phone: '081234567891', rating: 4.5, reviews: 12, photo: 'https://via.placeholder.com/200?text=Driver+Budi', earnings: 1500000, status: 'online' },
+  { id: 2, name: 'Siti (Makanan)', email: 'siti@gmail.com', password: '123456', role: 'merchant', type: 'GoFood', phone: '081234567892', rating: 4.8, reviews: 25, photo: 'https://via.placeholder.com/200?text=Chef+Siti', earnings: 2000000 }
 ];
 
 let services = [
@@ -36,8 +36,7 @@ let promos = [
   { id: 3, name: 'Beli 2 Gratis 1', desc: 'Untuk GoFood', discount: 50, code: 'GOFOOD2GRATIS' }
 ];
 
-let transactions = [];
-
+let ratings = [];
 let admins = [
   { id: 1, name: 'Admin', email: 'admin@sahabatgo.com', password: 'admin123', role: 'admin' }
 ];
@@ -74,7 +73,7 @@ app.post('/api/auth/register', (req, res) => {
   }
   
   if (providers.find(p => p.email === email)) return res.status(400).json({ success: false, pesan: 'Email sudah terdaftar' });
-  const newProvider = { id: providers.length + 1, name, email, password, phone, role, type, rating: 5.0, reviews: 0, photo: 'https://via.placeholder.com/200?text=' + name };
+  const newProvider = { id: providers.length + 1, name, email, password, phone, role, type, rating: 5.0, reviews: 0, photo: 'https://via.placeholder.com/200?text=' + name, earnings: 0, status: 'offline' };
   providers.push(newProvider);
   res.status(201).json({ success: true, data: newProvider });
 });
@@ -89,10 +88,28 @@ app.get('/api/providers/:type', (req, res) => {
   res.json({ success: true, data: providersByType });
 });
 
+app.get('/api/provider/:id', (req, res) => {
+  const provider = providers.find(p => p.id == req.params.id);
+  if (!provider) return res.status(404).json({ success: false, pesan: 'Provider tidak ditemukan' });
+  res.json({ success: true, data: provider });
+});
+
 // ===== ORDERS =====
 app.post('/api/orders', (req, res) => {
   const { userId, providerId, serviceName, totalPrice, description } = req.body;
-  const newOrder = { id: orderIdCounter++, userId, providerId, serviceName, totalPrice, description, status: 'pending', createdAt: new Date().toISOString().split('T')[0] };
+  const newOrder = { 
+    id: orderIdCounter++, 
+    userId, 
+    providerId: null,
+    driverId: null,
+    serviceName, 
+    totalPrice, 
+    description, 
+    status: 'searching', // searching, accepted, on_the_way, arrived, completed
+    createdAt: new Date().toISOString().split('T')[0],
+    acceptedAt: null,
+    completedAt: null
+  };
   orders.push(newOrder);
   res.status(201).json({ success: true, data: newOrder });
 });
@@ -102,18 +119,85 @@ app.get('/api/orders/user/:userId', (req, res) => {
   res.json({ success: true, data: userOrders });
 });
 
+// Get available orders for driver (searching status)
+app.get('/api/orders/available/:serviceName', (req, res) => {
+  const availableOrders = orders.filter(o => o.status === 'searching' && o.serviceName === req.params.serviceName);
+  res.json({ success: true, data: availableOrders });
+});
+
+// Get driver's orders (accepted)
+app.get('/api/orders/driver/:driverId', (req, res) => {
+  const driverOrders = orders.filter(o => o.driverId == req.params.driverId);
+  res.json({ success: true, data: driverOrders });
+});
+
 app.get('/api/order/:orderId', (req, res) => {
   const order = orders.find(o => o.id == req.params.orderId);
   if (!order) return res.status(404).json({ success: false, pesan: 'Order tidak ditemukan' });
   res.json({ success: true, data: order });
 });
 
-app.put('/api/order/:orderId', (req, res) => {
+// Driver accept order
+app.put('/api/order/:orderId/accept', (req, res) => {
+  const { driverId } = req.body;
+  const order = orders.find(o => o.id == req.params.orderId);
+  if (!order) return res.status(404).json({ success: false, pesan: 'Order tidak ditemukan' });
+  
+  order.status = 'accepted';
+  order.driverId = driverId;
+  order.acceptedAt = new Date().toISOString().split('T')[0];
+  
+  // Add earnings to driver
+  const driver = providers.find(p => p.id === driverId);
+  if (driver) {
+    driver.earnings += order.totalPrice;
+  }
+  
+  res.json({ success: true, data: order });
+});
+
+// Update order status
+app.put('/api/order/:orderId/status', (req, res) => {
   const { status } = req.body;
   const order = orders.find(o => o.id == req.params.orderId);
   if (!order) return res.status(404).json({ success: false, pesan: 'Order tidak ditemukan' });
+  
   order.status = status;
+  if (status === 'completed') {
+    order.completedAt = new Date().toISOString().split('T')[0];
+  }
+  
   res.json({ success: true, data: order });
+});
+
+// ===== RATING =====
+app.post('/api/ratings', (req, res) => {
+  const { userId, providerId, rating, review } = req.body;
+  const newRating = { 
+    id: ratings.length + 1, 
+    userId, 
+    providerId, 
+    rating, 
+    review, 
+    createdAt: new Date().toISOString().split('T')[0] 
+  };
+  ratings.push(newRating);
+  
+  // Update provider rating
+  const provider = providers.find(p => p.id === providerId);
+  if (provider) {
+    const providerRatings = ratings.filter(r => r.providerId === providerId);
+    const avgRating = (providerRatings.reduce((sum, r) => sum + r.rating, 0) / providerRatings.length).toFixed(1);
+    provider.rating = parseFloat(avgRating);
+    provider.reviews = providerRatings.length;
+  }
+  
+  res.status(201).json({ success: true, data: newRating });
+});
+
+app.get('/api/ratings/:providerId', (req, res) => {
+  const providerRatings = ratings.filter(r => r.providerId == req.params.providerId);
+  res.json({ success: true, data: providerRatings });
 });
 
 // ===== GOJEK FEATURES =====
@@ -126,7 +210,6 @@ app.post('/api/gopay/topup', (req, res) => {
   const user = users.find(u => u.id === userId);
   if (!user) return res.status(404).json({ success: false, pesan: 'User tidak ditemukan' });
   user.gopay += amount;
-  transactions.push({ id: transactions.length + 1, userId, type: 'topup', amount, date: new Date().toISOString().split('T')[0] });
   res.json({ success: true, data: user });
 });
 
