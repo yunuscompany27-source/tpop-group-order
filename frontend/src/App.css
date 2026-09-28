@@ -18,7 +18,7 @@ body {
   align-items: center;
 }
 
-/* ===== LOGIN PAGE ===== */
+/* LOGIN */
 .login-container {
   display: flex;
   flex-direction: column;
@@ -130,7 +130,6 @@ body {
   text-align: center;
   margin-top: 20px;
   color: white;
-  font-size: 0.95em;
 }
 
 .link-btn {
@@ -147,14 +146,14 @@ body {
   color: white;
 }
 
-/* ===== APP USER LAYOUT ===== */
+/* APP USER */
 .app-user {
   width: 100%;
   min-height: 100vh;
   background: #f5f5f5;
 }
 
-/* ===== NAVBAR ===== */
+/* NAVBAR */
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -220,7 +219,7 @@ body {
   transform: translateY(-2px);
 }
 
-/* ===== CONTAINER ===== */
+/* CONTAINER */
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -233,7 +232,7 @@ body {
   margin-bottom: 25px;
 }
 
-/* ===== HERO SECTION ===== */
+/* HERO */
 .hero {
   background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
   color: white;
@@ -255,10 +254,10 @@ body {
   opacity: 0.95;
 }
 
-/* ===== SERVICES GRID ===== */
+/* SERVICES GRID */
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 15px;
   margin-bottom: 40px;
 }
@@ -296,7 +295,7 @@ body {
   font-size: 0.9em;
 }
 
-/* ===== PROVIDERS GRID ===== */
+/* PROVIDERS GRID */
 .providers-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -360,7 +359,7 @@ body {
   box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
 }
 
-/* ===== PROMOS SECTION ===== */
+/* PROMOS */
 .promos-section {
   background: white;
   padding: 25px;
@@ -377,7 +376,7 @@ body {
 
 .promos-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 15px;
 }
 
@@ -412,7 +411,7 @@ body {
   border-radius: 5px;
 }
 
-/* ===== ORDERS SECTION ===== */
+/* ORDERS */
 .orders-section {
   background: white;
   padding: 25px;
@@ -445,29 +444,14 @@ body {
   color: #333;
 }
 
-.status-pending {
-  color: #ff9800;
-  font-weight: bold;
-  font-size: 0.9em;
-}
-
+.status-pending { color: #ff9800; font-weight: bold; }
 .status-accepted,
 .status-on_the_way,
 .status-arrived,
-.status-in_progress,
-.status-completed {
-  color: #4caf50;
-  font-weight: bold;
-  font-size: 0.9em;
-}
+.status-searching,
+.status-completed { color: #4caf50; font-weight: bold; }
 
-.status-searching {
-  color: #2196f3;
-  font-weight: bold;
-  font-size: 0.9em;
-}
-
-/* ===== GOPAY SECTION ===== */
+/* GOPAY */
 .gopay-section {
   background: white;
   padding: 30px;
@@ -512,7 +496,7 @@ body {
   box-shadow: 0 8px 15px rgba(0,0,0,0.2);
 }
 
-/* ===== TRACKING SECTION ===== */
+/* TRACKING */
 .tracking-list {
   display: grid;
   gap: 20px;
@@ -558,7 +542,7 @@ body {
   color: white;
 }
 
-/* ===== PROFILE SECTION ===== */
+/* PROFILE */
 .profile-section {
   background: white;
   padding: 30px;
@@ -579,11 +563,7 @@ body {
   font-size: 1.1em;
 }
 
-.profile-card strong {
-  color: #ffeb3b;
-}
-
-/* ===== DRIVER DASHBOARD ===== */
+/* DRIVER */
 .driver-section {
   background: white;
   padding: 30px;
@@ -607,7 +587,7 @@ body {
   font-size: 1.1em;
 }
 
-/* ===== AVAILABLE ORDERS LIST ===== */
+/* AVAILABLE ORDERS */
 .available-orders-list {
   display: grid;
   gap: 20px;
@@ -690,7 +670,7 @@ body {
   box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
 }
 
-/* ===== ACTIVE ORDERS LIST ===== */
+/* ACTIVE ORDERS */
 .active-orders-list {
   display: grid;
   gap: 20px;
@@ -719,21 +699,12 @@ body {
   color: white;
 }
 
-.status-badge.status-accepted {
-  background: #2196f3;
-}
-
-.status-badge.status-on_the_way {
-  background: #ff9800;
-}
-
-.status-badge.status-arrived {
-  background: #673ab7;
-}
-
-.status-badge.status-completed {
-  background: #4caf50;
-}
+.status-badge.status-accepted { background: #2196f3; }
+.status-badge.status-on_the_way { background: #ff9800; }
+.status-badge.status-arrived { background: #673ab7; }
+.status-badge.status-completed { background: #4caf50; }
+.status-badge.online { background: #4caf50; padding: 5px 15px; }
+.status-badge.offline { background: #999; padding: 5px 15px; }
 
 .status-buttons {
   display: grid;
@@ -752,34 +723,16 @@ body {
   color: white;
 }
 
-.status-btn-yellow {
-  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-}
+.status-btn-yellow { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); }
+.status-btn-yellow:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(255, 152, 0, 0.4); }
 
-.status-btn-yellow:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(255, 152, 0, 0.4);
-}
+.status-btn-blue { background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); }
+.status-btn-blue:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(33, 150, 243, 0.4); }
 
-.status-btn-blue {
-  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
-}
+.status-btn-green { background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); }
+.status-btn-green:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(76, 175, 80, 0.4); }
 
-.status-btn-blue:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(33, 150, 243, 0.4);
-}
-
-.status-btn-green {
-  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-}
-
-.status-btn-green:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(76, 175, 80, 0.4);
-}
-
-/* ===== COMPLETED ORDERS LIST ===== */
+/* COMPLETED ORDERS */
 .completed-orders-list {
   display: grid;
   gap: 15px;
@@ -808,7 +761,7 @@ body {
   font-style: italic;
 }
 
-/* ===== DRIVER PROFILE ===== */
+/* DRIVER PROFILE */
 .driver-profile-section {
   background: white;
   padding: 30px;
@@ -829,10 +782,6 @@ body {
   font-size: 1.1em;
 }
 
-.driver-profile-card strong {
-  color: #ffeb3b;
-}
-
 .earnings {
   background: rgba(0,0,0,0.2);
   padding: 15px;
@@ -840,25 +789,7 @@ body {
   margin: 20px 0;
 }
 
-.status-badge.online {
-  background: #4caf50;
-  color: white;
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-weight: bold;
-  display: inline-block;
-}
-
-.status-badge.offline {
-  background: #999;
-  color: white;
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-weight: bold;
-  display: inline-block;
-}
-
-/* ===== DASHBOARD SECTION ===== */
+/* DASHBOARD */
 .dashboard-section {
   background: white;
   padding: 30px;
@@ -879,7 +810,7 @@ body {
   font-size: 1.1em;
 }
 
-/* ===== STATS SECTION ===== */
+/* STATS */
 .stats-section {
   background: white;
   padding: 30px;
@@ -912,7 +843,7 @@ body {
   font-weight: bold;
 }
 
-/* ===== ADMIN ORDERS LIST ===== */
+/* ADMIN ORDERS */
 .admin-orders-list {
   display: grid;
   gap: 15px;
@@ -933,108 +864,38 @@ body {
   color: #333;
 }
 
-/* ===== RESPONSIVE ===== */
+/* RESPONSIVE */
 @media (max-width: 768px) {
   .navbar {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .navbar h1 {
-    font-size: 1.5em;
-  }
-
-  .navbar-menu {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .login-container h1 {
-    font-size: 2.5em;
-  }
-
-  .container {
-    padding: 15px 10px;
-  }
-
-  .container h2 {
-    font-size: 1.5em;
-  }
-
+  .navbar h1 { font-size: 1.5em; }
+  .navbar-menu { width: 100%; }
+  .login-container h1 { font-size: 2.5em; }
+  .container { padding: 15px 10px; }
+  .container h2 { font-size: 1.5em; }
   .services-grid,
   .providers-grid,
   .promos-list,
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero {
-    padding: 25px;
-  }
-
-  .hero h2 {
-    font-size: 1.5em;
-  }
-
-  .tracking-status {
-    flex-direction: column;
-  }
-
-  .order-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .service-type {
-    display: inline-block;
-    margin-top: 10px;
-  }
-
+  .stats-grid { grid-template-columns: 1fr; }
+  .hero { padding: 25px; }
+  .hero h2 { font-size: 1.5em; }
+  .tracking-status { flex-direction: column; }
+  .order-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .service-type { margin-top: 10px; }
   .available-order-card,
-  .active-order-card {
-    padding: 15px;
-  }
-
-  .driver-profile-card p {
-    font-size: 1em;
-  }
-
-  .driver-section h2 {
-    font-size: 1.5em;
-  }
+  .active-order-card { padding: 15px; }
+  .driver-section h2 { font-size: 1.5em; }
 }
 
 @media (max-width: 480px) {
-  .navbar {
-    padding: 10px;
-  }
-
-  .navbar h1 {
-    font-size: 1.2em;
-  }
-
-  .nav-btn {
-    padding: 6px 10px;
-    font-size: 0.8em;
-  }
-
-  .login-container h1 {
-    font-size: 2em;
-  }
-
-  .login-form {
-    max-width: 100%;
-    padding: 20px;
-  }
-
-  .container {
-    padding: 10px;
-  }
-
-  .role-btn {
-    padding: 8px 12px;
-    font-size: 0.8em;
-  }
+  .navbar { padding: 10px; }
+  .navbar h1 { font-size: 1.2em; }
+  .nav-btn { padding: 6px 10px; font-size: 0.8em; }
+  .login-container h1 { font-size: 2em; }
+  .login-form { max-width: 100%; padding: 20px; }
+  .container { padding: 10px; }
+  .role-btn { padding: 8px 12px; font-size: 0.8em; }
 }
