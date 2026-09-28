@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
+const BACKEND_URL = 'https://tpop-group-order-production.up.railway.app';
+const EMPTY_FORM = { name: '', email: '', password: '', phone: '', type: '' };
+const ORDER_STATUSES = ['searching', 'accepted', 'on_the_way', 'arrived', 'completed', 'cancelled'];
+
+// helper fetch JSON
+const api = async (path, method = 'GET', body) => {
+  const res = await fetch(`${BACKEND_URL}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res.json();
+};
+
 function App() {
   const [page, setPage] = useState('login');
   const [role, setRole] = useState('user');
@@ -11,121 +25,105 @@ function App() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [driverOrders, setDriverOrders] = useState([]);
   const [promos, setPromos] = useState([]);
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', type: '' });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [selectedService, setSelectedService] = useState(null);
-
-  const BACKEND_URL = 'https://tpop-group-order-production.up.railway.app';
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminProviders, setAdminProviders] = useState([]);
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [adminStats, setAdminStats] = useState({});
+  const [editingUser, setEditingUser] = useState(null);
+  const [editingProvider, setEditingProvider] = useState(null);
 
   useEffect(() => {
     fetchServices();
     fetchPromos();
   }, []);
 
-  const fetchServices = async () => {
+  // ===== FETCHERS =====
+  const load = async (path, setter, fallback = []) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/services`);
-      const data = await res.json();
-      setServices(data.data || []);
+      const data = await api(path);
+      setter(data.data || fallback);
     } catch (err) {
       console.error('Error:', err);
     }
   };
+  const fetchServices = () => load('/api/services', setServices);
+  const fetchPromos = () => load('/api/promos', setPromos);
+  const fetchProviders = (type) => load(`/api/providers/${type}`, setProviders);
+  const fetchUserOrders = (id) => load(`/api/orders/user/${id}`, setOrders);
+  const fetchAvailableOrders = (name) => load(`/api/orders/available/${name}`, setAvailableOrders);
+  const fetchDriverOrders = (id) => load(`/api/orders/driver/${id}`, setDriverOrders);
+  const fetchAdminUsers = () => load('/api/admin/users', setAdminUsers);
+  const fetchAdminProviders = () => load('/api/admin/providers', setAdminProviders);
+  const fetchAdminOrders = () => load('/api/admin/all-orders', setAdminOrders);
+  const fetchAdminStats = () => load('/api/admin/stats', setAdminStats, {});
 
-  const fetchPromos = async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/promos`);
-      const data = await res.json();
-      setPromos(data.data || []);
-    } catch (err) {
-      console.error('Error:', err);
-    }
-  };
-
-  const fetchProviders = async (type) => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/providers/${type}`);
-      const data = await res.json();
-      setProviders(data.data || []);
-    } catch (err) {
-      console.error('Error:', err);
-    }
-  };
-
-  const fetchUserOrders = async (userId) => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/orders/user/${userId}`);
-      const data = await res.json();
-      setOrders(data.data || []);
-    } catch (err) {
-      console.error('Error:', err);
-    }
-  };
-
-  const fetchAvailableOrders = async (serviceName) => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/orders/available/${serviceName}`);
-      const data = await res.json();
-      setAvailableOrders(data.data || []);
-    } catch (err) {
-      console.error('Error:', err);
-    }
-  };
-
-  const fetchDriverOrders = async (driverId) => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/orders/driver/${driverId}`);
-      const data = await res.json();
-      setDriverOrders(data.data || []);
-    } catch (err) {
-      console.error('Error:', err);
-    }
-  };
-
+  // ===== AUTH =====
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: form.email, password: form.password, role })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCurrentUser(data.data);
-        setForm({ name: '', email: '', password: '', phone: '', type: '' });
-        if (role === 'user') {
-          fetchUserOrders(data.data.id);
-          setPage('home');
-        } else if (role === 'admin') {
-          setPage('admin-dashboard');
-        } else if (role === 'driver') {
-          fetchAvailableOrders(data.data.type);
-          fetchDriverOrders(data.data.id);
-          setPage('driver-dashboard');
-        } else {
-          setPage('merchant-dashboard');
-        }
+      const data = await api('/api/auth/login', 'POST', { email: form.email, password: form.password, role });
+      if (!data.success) return alert(data.pesan);
+      setCurrentUser(data.data);
+      setForm(EMPTY_FORM);
+      if (role === 'user') {
+        fetchUserOrders(data.data.id);
+        setPage('home');
+      } else if (role === 'admin') {
+        fetchAdminStats();
+        fetchAdminUsers();
+        fetchAdminProviders();
+        fetchAdminOrders();
+        setPage('admin-dashboard');
+      } else if (role === 'driver') {
+        fetchAvailableOrders(data.data.type);
+        fetchDriverOrders(data.data.id);
+        setPage('driver-dashboard');
       } else {
-        alert(data.pesan);
+        setPage('merchant-dashboard');
       }
     } catch (err) {
       alert('Login gagal');
     }
   };
 
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    try {
+      const data = await api('/api/auth/register', 'POST', { ...form, role });
+      if (data.success) {
+        alert('Pendaftaran berhasil!');
+        setPage('login');
+        setForm(EMPTY_FORM);
+      } else {
+        alert(data.pesan);
+      }
+    } catch (err) {
+      alert('Register gagal');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setPage('login');
+    setForm(EMPTY_FORM);
+    setEditingUser(null);
+    setEditingProvider(null);
+  };
+
+  // ===== DRIVER =====
   const handleAcceptOrder = async (orderId) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/order/${orderId}/accept`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ driverId: currentUser.id })
-      });
-      const data = await res.json();
+      const data = await api(`/api/order/${orderId}/accept`, 'PUT', { driverId: currentUser.id });
       if (data.success) {
         alert('Order diterima!');
         fetchAvailableOrders(currentUser.type);
         fetchDriverOrders(currentUser.id);
         setPage('driver-active-orders');
+      } else {
+        alert(data.pesan);
+        fetchAvailableOrders(currentUser.type);
       }
     } catch (err) {
       alert('Gagal terima order');
@@ -134,14 +132,9 @@ function App() {
 
   const handleUpdateStatus = async (orderId, status) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/order/${orderId}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      const data = await res.json();
+      const data = await api(`/api/order/${orderId}/status`, 'PUT', { status });
       if (data.success) {
-        alert(`Status diubah ke ${status}!`);
+        alert('Status diubah!');
         fetchDriverOrders(currentUser.id);
       }
     } catch (err) {
@@ -149,82 +142,192 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setPage('login');
-    setForm({ name: '', email: '', password: '', phone: '', type: '' });
+  // ===== ADMIN: USERS =====
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Hapus user ini?')) return;
+    try {
+      const data = await api(`/api/admin/user/${userId}`, 'DELETE');
+      if (data.success) {
+        alert('User dihapus!');
+        fetchAdminUsers();
+        fetchAdminStats();
+      }
+    } catch (err) {
+      alert('Gagal hapus user');
+    }
   };
 
-  // LOGIN
+  const handleSuspendUser = async (userId) => {
+    try {
+      const data = await api(`/api/admin/user/${userId}/suspend`, 'PUT');
+      if (data.success) {
+        alert(`User sekarang: ${data.data.status}`);
+        fetchAdminUsers();
+      }
+    } catch (err) {
+      alert('Gagal suspend user');
+    }
+  };
+
+  const handleSaveUser = async () => {
+    try {
+      const data = await api(`/api/admin/user/${editingUser.id}`, 'PUT', {
+        name: editingUser.name, email: editingUser.email, phone: editingUser.phone
+      });
+      if (!data.success) return alert(data.pesan);
+      if (editingUser.newPassword) {
+        const r = await api(`/api/admin/user/${editingUser.id}/reset-password`, 'PUT', { newPassword: editingUser.newPassword });
+        if (!r.success) return alert(r.pesan);
+      }
+      alert('User berhasil diupdate!');
+      setEditingUser(null);
+      fetchAdminUsers();
+    } catch (err) {
+      alert('Gagal update user');
+    }
+  };
+
+  // ===== ADMIN: PROVIDERS =====
+  const handleDeleteProvider = async (providerId) => {
+    if (!window.confirm('Hapus provider ini?')) return;
+    try {
+      const data = await api(`/api/admin/provider/${providerId}`, 'DELETE');
+      if (data.success) {
+        alert('Provider dihapus!');
+        fetchAdminProviders();
+        fetchAdminStats();
+      }
+    } catch (err) {
+      alert('Gagal hapus provider');
+    }
+  };
+
+  const handleSuspendProvider = async (providerId) => {
+    try {
+      const data = await api(`/api/admin/provider/${providerId}/suspend`, 'PUT');
+      if (data.success) {
+        alert(`Provider sekarang: ${data.data.status}`);
+        fetchAdminProviders();
+      }
+    } catch (err) {
+      alert('Gagal suspend provider');
+    }
+  };
+
+  const handleSaveProvider = async () => {
+    try {
+      const data = await api(`/api/admin/provider/${editingProvider.id}`, 'PUT', {
+        name: editingProvider.name, email: editingProvider.email, phone: editingProvider.phone
+      });
+      if (!data.success) return alert(data.pesan);
+      if (editingProvider.newPassword) {
+        const r = await api(`/api/admin/provider/${editingProvider.id}/reset-password`, 'PUT', { newPassword: editingProvider.newPassword });
+        if (!r.success) return alert(r.pesan);
+      }
+      alert('Provider berhasil diupdate!');
+      setEditingProvider(null);
+      fetchAdminProviders();
+    } catch (err) {
+      alert('Gagal update provider');
+    }
+  };
+
+  // ===== ADMIN: ORDERS =====
+  const handleAdminChangeStatus = async (orderId, status) => {
+    try {
+      const data = await api(`/api/order/${orderId}/status`, 'PUT', { status });
+      if (!data.success) return alert(data.pesan);
+      fetchAdminOrders();
+      fetchAdminStats();
+    } catch (err) {
+      alert('Gagal ubah status');
+    }
+  };
+
+  // ===== SHARED UI =====
+  const adminNav = (active) => (
+    <header className="navbar">
+      <h1>⚙️ Admin Dashboard</h1>
+      <div className="navbar-menu">
+        <button onClick={() => { fetchAdminStats(); setPage('admin-dashboard'); }} className={`nav-btn ${active === 'stats' ? 'active' : ''}`}>📊 Stats</button>
+        <button onClick={() => { fetchAdminUsers(); setPage('admin-users'); }} className={`nav-btn ${active === 'users' ? 'active' : ''}`}>👥 Users</button>
+        <button onClick={() => { fetchAdminProviders(); setPage('admin-providers'); }} className={`nav-btn ${active === 'providers' ? 'active' : ''}`}>🚗 Providers</button>
+        <button onClick={() => { fetchAdminOrders(); setPage('admin-orders'); }} className={`nav-btn ${active === 'orders' ? 'active' : ''}`}>📦 Orders</button>
+        <button onClick={handleLogout} className="logout-btn">Logout</button>
+      </div>
+    </header>
+  );
+
+  const driverNav = (active) => (
+    <header className="navbar">
+      <h1>🛵 SahabatGo Driver</h1>
+      <div className="navbar-menu">
+        <button onClick={() => setPage('driver-dashboard')} className={`nav-btn ${active === 'available' ? 'active' : ''}`}>📋 Tersedia</button>
+        <button onClick={() => setPage('driver-active-orders')} className={`nav-btn ${active === 'active' ? 'active' : ''}`}>🚗 Aktif</button>
+        <button onClick={() => setPage('driver-profile')} className={`nav-btn ${active === 'profile' ? 'active' : ''}`}>👤 Profile</button>
+        <button onClick={handleLogout} className="logout-btn">Logout</button>
+      </div>
+    </header>
+  );
+
+  const userBackHeader = (
+    <header className="navbar">
+      <h1>🏍️ SahabatGo</h1>
+      <button onClick={() => setPage('home')} className="back-btn">← Home</button>
+    </header>
+  );
+
+  const roleSelector = (withAdmin) => (
+    <div className="role-selector">
+      <button className={`role-btn ${role === 'user' ? 'active' : ''}`} onClick={() => setRole('user')}>👤 User</button>
+      <button className={`role-btn ${role === 'driver' ? 'active' : ''}`} onClick={() => setRole('driver')}>🛵 Driver</button>
+      <button className={`role-btn ${role === 'merchant' ? 'active' : ''}`} onClick={() => setRole('merchant')}>🏪 Merchant</button>
+      {withAdmin && <button className={`role-btn ${role === 'admin' ? 'active' : ''}`} onClick={() => setRole('admin')}>⚙️ Admin</button>}
+    </div>
+  );
+
+  const setField = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+
+  // ===== LOGIN =====
   if (page === 'login') {
     return (
       <div className="app">
         <div className="login-container">
           <h1>🏍️ SahabatGo</h1>
           <p>Layanan Transportasi & Logistik Terpadu</p>
-          <div className="role-selector">
-            <button className={`role-btn ${role === 'user' ? 'active' : ''}`} onClick={() => setRole('user')}>👤 User</button>
-            <button className={`role-btn ${role === 'driver' ? 'active' : ''}`} onClick={() => setRole('driver')}>🛵 Driver</button>
-            <button className={`role-btn ${role === 'merchant' ? 'active' : ''}`} onClick={() => setRole('merchant')}>🏪 Merchant</button>
-            <button className={`role-btn ${role === 'admin' ? 'active' : ''}`} onClick={() => setRole('admin')}>⚙️ Admin</button>
-          </div>
+          {roleSelector(true)}
           <form onSubmit={handleLogin} className="login-form">
             <h2>Login</h2>
-            <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} required />
-            <input type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({...form, password: e.target.value})} required />
+            <input type="email" placeholder="Email" value={form.email} onChange={setField('email')} required />
+            <input type="password" placeholder="Password" value={form.password} onChange={setField('password')} required />
             <button type="submit">Login</button>
           </form>
-          <p className="switch-form">Belum punya akun? <button onClick={() => setPage('register')} className="link-btn">Daftar</button></p>
+          <p className="switch-form">Belum punya akun? <button onClick={() => { setRole(role === 'admin' ? 'user' : role); setPage('register'); }} className="link-btn">Daftar</button></p>
         </div>
       </div>
     );
   }
 
-  // REGISTER
+  // ===== REGISTER =====
   if (page === 'register') {
     return (
       <div className="app">
         <div className="login-container">
           <h1>🏍️ SahabatGo</h1>
           <p>Daftar Akun Baru</p>
-          <div className="role-selector">
-            <button className={`role-btn ${role === 'user' ? 'active' : ''}`} onClick={() => setRole('user')}>👤 User</button>
-            <button className={`role-btn ${role === 'driver' ? 'active' : ''}`} onClick={() => setRole('driver')}>🛵 Driver</button>
-            <button className={`role-btn ${role === 'merchant' ? 'active' : ''}`} onClick={() => setRole('merchant')}>🏪 Merchant</button>
-          </div>
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            try {
-              const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...form, role })
-              });
-              const data = await res.json();
-              if (data.success) {
-                alert('Pendaftaran berhasil!');
-                setPage('login');
-                setForm({ name: '', email: '', password: '', phone: '', type: '' });
-              } else {
-                alert(data.pesan);
-              }
-            } catch (err) {
-              alert('Register gagal');
-            }
-          }} className="login-form">
+          {roleSelector(false)}
+          <form onSubmit={handleRegister} className="login-form">
             <h2>Daftar</h2>
-            <input type="text" placeholder="Nama" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} required />
-            <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} required />
-            <input type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({...form, password: e.target.value})} required />
-            <input type="text" placeholder="No. Telepon" value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} required />
+            <input type="text" placeholder="Nama" value={form.name} onChange={setField('name')} required />
+            <input type="email" placeholder="Email" value={form.email} onChange={setField('email')} required />
+            <input type="password" placeholder="Password" value={form.password} onChange={setField('password')} required />
+            <input type="text" placeholder="No. Telepon" value={form.phone} onChange={setField('phone')} required />
             {role !== 'user' && (
-              <select value={form.type} onChange={(e) => setForm({...form, type: e.target.value})} required>
+              <select value={form.type} onChange={setField('type')} required>
                 <option value="">Pilih Tipe</option>
-                <option value="GoRide">GoRide - Driver</option>
-                <option value="GoFood">GoFood - Merchant</option>
-                <option value="GoSend">GoSend - Kurir</option>
-                <option value="GoMart">GoMart - Toko</option>
-                <option value="GoService">GoService - Jasa</option>
+                <option value="GoRide">GoRide</option>
+                <option value="GoFood">GoFood</option>
+                <option value="GoSend">GoSend</option>
               </select>
             )}
             <button type="submit">Daftar</button>
@@ -235,17 +338,17 @@ function App() {
     );
   }
 
-  // USER HOME
+  // ===== USER HOME =====
   if (page === 'home' && currentUser && role === 'user') {
     return (
       <div className="app-user">
         <header className="navbar">
           <h1>🏍️ SahabatGo</h1>
           <div className="navbar-menu">
-            <button onClick={() => setPage('home')} className={`nav-btn ${page === 'home' ? 'active' : ''}`}>🏠 Home</button>
-            <button onClick={() => setPage('gopay')} className={`nav-btn ${page === 'gopay' ? 'active' : ''}`}>💳 GoPay</button>
-            <button onClick={() => setPage('tracking')} className={`nav-btn ${page === 'tracking' ? 'active' : ''}`}>📍 Tracking</button>
-            <button onClick={() => setPage('profile')} className={`nav-btn ${page === 'profile' ? 'active' : ''}`}>👤 Profile</button>
+            <button onClick={() => setPage('home')} className="nav-btn active">🏠 Home</button>
+            <button onClick={() => setPage('gopay')} className="nav-btn">💳 GoPay</button>
+            <button onClick={() => { fetchUserOrders(currentUser.id); setPage('tracking'); }} className="nav-btn">📍 Tracking</button>
+            <button onClick={() => setPage('profile')} className="nav-btn">👤 Profile</button>
             <button onClick={handleLogout} className="logout-btn">Logout</button>
           </div>
         </header>
@@ -299,7 +402,7 @@ function App() {
     );
   }
 
-  // SELECT PROVIDER
+  // ===== SELECT PROVIDER =====
   if (page === 'select-provider' && currentUser && role === 'user') {
     return (
       <div className="app-user">
@@ -317,18 +420,13 @@ function App() {
                 <p>⭐ {p.rating} ({p.reviews} review)</p>
                 <p className="price">Rp {Math.round(p.rating * 10000).toLocaleString()}</p>
                 <button onClick={async () => {
-                  const res = await fetch(`${BACKEND_URL}/api/orders`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      userId: currentUser.id,
-                      providerId: p.id,
-                      serviceName: selectedService,
-                      totalPrice: Math.round(p.rating * 10000),
-                      description: `Order ${selectedService}`
-                    })
+                  const data = await api('/api/orders', 'POST', {
+                    userId: currentUser.id,
+                    providerId: p.id,
+                    serviceName: selectedService,
+                    totalPrice: Math.round(p.rating * 10000),
+                    description: `Order ${selectedService}`
                   });
-                  const data = await res.json();
                   if (data.success) {
                     alert('Order berhasil!');
                     fetchUserOrders(currentUser.id);
@@ -343,14 +441,11 @@ function App() {
     );
   }
 
-  // GOPAY
-  if (page === 'gopay' && currentUser) {
+  // ===== GOPAY =====
+  if (page === 'gopay' && currentUser && role === 'user') {
     return (
       <div className="app-user">
-        <header className="navbar">
-          <h1>🏍️ SahabatGo</h1>
-          <button onClick={() => setPage('home')} className="back-btn">← Home</button>
-        </header>
+        {userBackHeader}
         <div className="container">
           <section className="gopay-section">
             <h2>💳 GoPay</h2>
@@ -358,18 +453,14 @@ function App() {
               <h3>Saldo Anda</h3>
               <p className="balance">Rp {(currentUser.gopay || 0).toLocaleString()}</p>
               <button onClick={async () => {
-                const amount = prompt('Masukkan nominal (Rp):');
-                if (amount) {
-                  const res = await fetch(`${BACKEND_URL}/api/gopay/topup`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.id, amount: parseInt(amount) })
-                  });
-                  const data = await res.json();
-                  if (data.success) {
-                    setCurrentUser(data.data);
-                    alert('Topup berhasil!');
-                  }
+                const amount = parseInt(prompt('Masukkan nominal (Rp):'), 10);
+                if (!amount || amount <= 0) return;
+                const data = await api('/api/gopay/topup', 'POST', { userId: currentUser.id, amount });
+                if (data.success) {
+                  setCurrentUser(data.data);
+                  alert('Topup berhasil!');
+                } else {
+                  alert(data.pesan);
                 }
               }} className="topup-btn">+ Topup</button>
             </div>
@@ -379,14 +470,11 @@ function App() {
     );
   }
 
-  // TRACKING
-  if (page === 'tracking' && currentUser) {
+  // ===== TRACKING =====
+  if (page === 'tracking' && currentUser && role === 'user') {
     return (
       <div className="app-user">
-        <header className="navbar">
-          <h1>🏍️ SahabatGo</h1>
-          <button onClick={() => setPage('home')} className="back-btn">← Home</button>
-        </header>
+        {userBackHeader}
         <div className="container">
           <h2>📍 Tracking</h2>
           {orders.length === 0 ? (
@@ -414,14 +502,11 @@ function App() {
     );
   }
 
-  // PROFILE USER
+  // ===== PROFILE USER =====
   if (page === 'profile' && currentUser && role === 'user') {
     return (
       <div className="app-user">
-        <header className="navbar">
-          <h1>🏍️ SahabatGo</h1>
-          <button onClick={() => setPage('home')} className="back-btn">← Home</button>
-        </header>
+        {userBackHeader}
         <div className="container">
           <section className="profile-section">
             <h2>👤 Profile</h2>
@@ -438,19 +523,11 @@ function App() {
     );
   }
 
-  // DRIVER DASHBOARD - AVAILABLE ORDERS
+  // ===== DRIVER DASHBOARD =====
   if (page === 'driver-dashboard' && currentUser && role === 'driver') {
     return (
       <div className="app-user">
-        <header className="navbar">
-          <h1>🛵 SahabatGo Driver</h1>
-          <div className="navbar-menu">
-            <button onClick={() => setPage('driver-dashboard')} className="nav-btn active">📋 Tersedia</button>
-            <button onClick={() => setPage('driver-active-orders')} className="nav-btn">🚗 Aktif</button>
-            <button onClick={() => setPage('driver-profile')} className="nav-btn">👤 Profile</button>
-            <button onClick={handleLogout} className="logout-btn">Logout</button>
-          </div>
-        </header>
+        {driverNav('available')}
         <div className="container">
           <section className="driver-section">
             <h2>📋 Pesanan Tersedia ({availableOrders.length})</h2>
@@ -480,22 +557,14 @@ function App() {
     );
   }
 
-  // DRIVER DASHBOARD - ACTIVE ORDERS
+  // ===== DRIVER ACTIVE ORDERS =====
   if (page === 'driver-active-orders' && currentUser && role === 'driver') {
-    const activeOrders = driverOrders.filter(o => o.status !== 'completed');
+    const activeOrders = driverOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
     const completedOrders = driverOrders.filter(o => o.status === 'completed');
-    
+
     return (
       <div className="app-user">
-        <header className="navbar">
-          <h1>🛵 SahabatGo Driver</h1>
-          <div className="navbar-menu">
-            <button onClick={() => setPage('driver-dashboard')} className="nav-btn">📋 Tersedia</button>
-            <button onClick={() => setPage('driver-active-orders')} className="nav-btn active">🚗 Aktif</button>
-            <button onClick={() => setPage('driver-profile')} className="nav-btn">👤 Profile</button>
-            <button onClick={handleLogout} className="logout-btn">Logout</button>
-          </div>
-        </header>
+        {driverNav('active')}
         <div className="container">
           <section className="driver-section">
             <h2>🚗 Pesanan Aktif ({activeOrders.length})</h2>
@@ -531,7 +600,7 @@ function App() {
             )}
           </section>
 
-          <section className="driver-section" style={{marginTop: '40px'}}>
+          <section className="driver-section" style={{ marginTop: '40px' }}>
             <h2>✓ Selesai ({completedOrders.length})</h2>
             {completedOrders.length === 0 ? (
               <p className="no-orders">Belum ada yang selesai</p>
@@ -551,14 +620,11 @@ function App() {
     );
   }
 
-  // DRIVER PROFILE
+  // ===== DRIVER PROFILE =====
   if (page === 'driver-profile' && currentUser && role === 'driver') {
     return (
       <div className="app-user">
-        <header className="navbar">
-          <h1>🛵 SahabatGo Driver</h1>
-          <button onClick={() => setPage('driver-dashboard')} className="back-btn">← Kembali</button>
-        </header>
+        {driverNav('profile')}
         <div className="container">
           <section className="driver-profile-section">
             <h2>👤 Profile Driver</h2>
@@ -570,7 +636,7 @@ function App() {
               <p><strong>Rating:</strong> ⭐ {currentUser.rating} ({currentUser.reviews} review)</p>
               <p><strong>Status:</strong> <span className={`status-badge ${currentUser.status === 'online' ? 'online' : 'offline'}`}>{currentUser.status.toUpperCase()}</span></p>
               <p className="earnings"><strong>Total Earning:</strong> Rp {(currentUser.earnings || 0).toLocaleString()}</p>
-              <p><strong>Pesanan Aktif:</strong> {driverOrders.filter(o => o.status !== 'completed').length}</p>
+              <p><strong>Pesanan Aktif:</strong> {driverOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length}</p>
               <p><strong>Pesanan Selesai:</strong> {driverOrders.filter(o => o.status === 'completed').length}</p>
             </div>
           </section>
@@ -579,7 +645,7 @@ function App() {
     );
   }
 
-  // MERCHANT DASHBOARD
+  // ===== MERCHANT DASHBOARD =====
   if (page === 'merchant-dashboard' && currentUser && role === 'merchant') {
     return (
       <div className="app-user">
@@ -602,41 +668,147 @@ function App() {
     );
   }
 
-  // ADMIN DASHBOARD
+  // ===== ADMIN DASHBOARD =====
   if (page === 'admin-dashboard' && currentUser && role === 'admin') {
+    const stats = [
+      ['Total Users', adminStats.totalUsers],
+      ['Total Providers', adminStats.totalProviders],
+      ['Total Orders', adminStats.totalOrders],
+      ['Aktif', adminStats.activeOrders],
+      ['Selesai', adminStats.completedOrders]
+    ];
     return (
       <div className="app-user">
-        <header className="navbar">
-          <h1>⚙️ Admin Dashboard</h1>
-          <button onClick={handleLogout} className="logout-btn">Logout</button>
-        </header>
+        {adminNav('stats')}
         <div className="container">
           <section className="stats-section">
             <h2>📊 Statistik</h2>
             <div className="stats-grid">
-              <div className="stat-card">
-                <h3>Total Orders</h3>
-                <p className="stat-number">{orders.length}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Aktif</h3>
-                <p className="stat-number">{orders.filter(o => o.status !== 'completed').length}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Selesai</h3>
-                <p className="stat-number">{orders.filter(o => o.status === 'completed').length}</p>
-              </div>
+              {stats.map(([label, value]) => (
+                <div key={label} className="stat-card">
+                  <h3>{label}</h3>
+                  <p className="stat-number">{value || 0}</p>
+                </div>
+              ))}
             </div>
-            <div style={{marginTop: '40px'}}>
-              <h3>📋 Semua Pesanan</h3>
-              <div className="admin-orders-list">
-                {orders.map(o => (
-                  <div key={o.id} className="admin-order-item">
-                    <p><strong>#{o.id}</strong> - {o.serviceName} - Rp {o.totalPrice.toLocaleString()}</p>
-                    <p className={`status-${o.status}`}>{o.status}</p>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== ADMIN USERS =====
+  if (page === 'admin-users' && currentUser && role === 'admin') {
+    return (
+      <div className="app-user">
+        {adminNav('users')}
+        <div className="container">
+          <section className="admin-section">
+            <h2>👥 Manage Users ({adminUsers.length})</h2>
+            {editingUser ? (
+              <div className="edit-form">
+                <h3>Edit User #{editingUser.id}</h3>
+                <input type="text" placeholder="Nama" value={editingUser.name} onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })} />
+                <input type="email" placeholder="Email" value={editingUser.email} onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })} />
+                <input type="text" placeholder="No. Telepon" value={editingUser.phone} onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })} />
+                <input type="password" placeholder="Password baru (kosongkan jika tidak diganti)" value={editingUser.newPassword || ''} onChange={(e) => setEditingUser({ ...editingUser, newPassword: e.target.value })} />
+                <div className="button-group">
+                  <button onClick={handleSaveUser} className="save-btn">💾 Simpan</button>
+                  <button onClick={() => setEditingUser(null)} className="cancel-btn">❌ Batal</button>
+                </div>
+              </div>
+            ) : (
+              <div className="admin-list">
+                {adminUsers.length === 0 && <p className="no-orders">Belum ada user</p>}
+                {adminUsers.map(u => (
+                  <div key={u.id} className="admin-item">
+                    <div className="item-info">
+                      <h4>#{u.id} - {u.name}</h4>
+                      <p>{u.email} | {u.phone}</p>
+                      <p><strong>Status:</strong> <span className={`status-badge ${u.status}`}>{u.status}</span></p>
+                    </div>
+                    <div className="item-actions">
+                      <button onClick={() => setEditingUser({ ...u })} className="edit-btn">✏️ Edit</button>
+                      <button onClick={() => handleSuspendUser(u.id)} className="suspend-btn">🚫 {u.status === 'suspended' ? 'Aktifkan' : 'Suspend'}</button>
+                      <button onClick={() => handleDeleteUser(u.id)} className="delete-btn">🗑️ Hapus</button>
+                    </div>
                   </div>
                 ))}
               </div>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== ADMIN PROVIDERS =====
+  if (page === 'admin-providers' && currentUser && role === 'admin') {
+    return (
+      <div className="app-user">
+        {adminNav('providers')}
+        <div className="container">
+          <section className="admin-section">
+            <h2>🚗 Manage Providers ({adminProviders.length})</h2>
+            {editingProvider ? (
+              <div className="edit-form">
+                <h3>Edit Provider #{editingProvider.id}</h3>
+                <input type="text" placeholder="Nama" value={editingProvider.name} onChange={(e) => setEditingProvider({ ...editingProvider, name: e.target.value })} />
+                <input type="email" placeholder="Email" value={editingProvider.email} onChange={(e) => setEditingProvider({ ...editingProvider, email: e.target.value })} />
+                <input type="text" placeholder="No. Telepon" value={editingProvider.phone} onChange={(e) => setEditingProvider({ ...editingProvider, phone: e.target.value })} />
+                <input type="password" placeholder="Password baru (kosongkan jika tidak diganti)" value={editingProvider.newPassword || ''} onChange={(e) => setEditingProvider({ ...editingProvider, newPassword: e.target.value })} />
+                <div className="button-group">
+                  <button onClick={handleSaveProvider} className="save-btn">💾 Simpan</button>
+                  <button onClick={() => setEditingProvider(null)} className="cancel-btn">❌ Batal</button>
+                </div>
+              </div>
+            ) : (
+              <div className="admin-list">
+                {adminProviders.length === 0 && <p className="no-orders">Belum ada provider</p>}
+                {adminProviders.map(p => (
+                  <div key={p.id} className="admin-item">
+                    <div className="item-info">
+                      <h4>#{p.id} - {p.name}</h4>
+                      <p>{p.email} | {p.phone} | {p.type} ({p.role})</p>
+                      <p><strong>Rating:</strong> ⭐ {p.rating} | <strong>Status:</strong> <span className={`status-badge ${p.status}`}>{p.status}</span></p>
+                    </div>
+                    <div className="item-actions">
+                      <button onClick={() => setEditingProvider({ ...p })} className="edit-btn">✏️ Edit</button>
+                      <button onClick={() => handleSuspendProvider(p.id)} className="suspend-btn">🚫 {p.status === 'suspended' ? 'Aktifkan' : 'Suspend'}</button>
+                      <button onClick={() => handleDeleteProvider(p.id)} className="delete-btn">🗑️ Hapus</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== ADMIN ORDERS =====
+  if (page === 'admin-orders' && currentUser && role === 'admin') {
+    return (
+      <div className="app-user">
+        {adminNav('orders')}
+        <div className="container">
+          <section className="admin-section">
+            <h2>📦 Semua Orders ({adminOrders.length})</h2>
+            <div className="admin-orders-list">
+              {adminOrders.length === 0 && <p className="no-orders">Belum ada order</p>}
+              {adminOrders.map(o => (
+                <div key={o.id} className="admin-order-item">
+                  <div className="item-info">
+                    <p><strong>Order #{o.id}</strong> - {o.serviceName}</p>
+                    <p>Rp {o.totalPrice.toLocaleString()} | User ID: {o.userId} | Driver ID: {o.driverId || '-'}</p>
+                    <p>Dibuat: {o.createdAt}</p>
+                  </div>
+                  <select className="status-select" value={o.status} onChange={(e) => handleAdminChangeStatus(o.id, e.target.value)}>
+                    {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              ))}
             </div>
           </section>
         </div>
